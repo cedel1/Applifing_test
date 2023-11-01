@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.tests.utils.product import create_random_product
+from app.tests.utils.item import create_random_item
 
 
 def test_create_item(

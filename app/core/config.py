@@ -82,7 +82,11 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: EmailStr
     FIRST_SUPERUSER_PASSWORD: str
     USERS_OPEN_REGISTRATION: bool = False
-    
+
+    OFFER_SERVICE_TOKEN: str
+    AUTHENTICATION_TOKEN: str
+    OFFER_SERVICE_BASE_URL: AnyHttpUrl
+
     model_config = SettingsConfigDict(case_sensitive=True)
 
 
