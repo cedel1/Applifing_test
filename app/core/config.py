@@ -2,8 +2,9 @@ import secrets
 from typing import Any, List, Optional, Union
 
 from dotenv import load_dotenv
-from pydantic import (AnyHttpUrl, AnyUrl, EmailStr, HttpUrl, PostgresDsn,
-                      ValidationInfo, field_validator)
+from pydantic import (AnyHttpUrl, EmailStr, PostgresDsn, ValidationInfo,
+                      field_validator)
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,22 +34,36 @@ class Settings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
+    POSTGRES_DB_TESTING: str
     SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
+    SQLALCHEMY_TESTING_DATABASE_URI: Optional[PostgresDsn] = None
 
-    @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
+
     @classmethod
-    def assemble_db_connection(cls, v: Optional[str], info: ValidationInfo) -> Any:
+    def _assemble_db_connection_common(cls, v: Optional[str], info: ValidationInfo, db: Optional[str]) -> Any:
         if isinstance(v, str):
             return v
         user = info.data.get("POSTGRES_USER")
         password = info.data.get("POSTGRES_PASSWORD")
         host = info.data.get("POSTGRES_SERVER")
-        db = info.data.get("POSTGRES_DB")
 
         if all([user, password, host, db]):
             return f"postgresql://{user}:{password}@{host}/{db}"
         else:
             return None
+
+
+    @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
+    @classmethod
+    def assemble_db_connection(cls, v: Optional[str], info: ValidationInfo) -> Any:
+        return cls._assemble_db_connection_common(v, info, info.data.get("POSTGRES_DB"))
+
+
+    @field_validator("SQLALCHEMY_TESTING_DATABASE_URI", mode="before")
+    @classmethod
+    def assemble_testing_db_connection(cls, v: Optional[str], info: ValidationInfo) -> Any:
+        return cls._assemble_db_connection_common(v, info, info.data.get("POSTGRES_DB_TESTING"))
+
 
     SMTP_TLS: bool = True
     SMTP_PORT: Optional[int] = None

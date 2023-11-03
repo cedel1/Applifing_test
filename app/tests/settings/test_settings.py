@@ -1,6 +1,6 @@
+import os
 from io import StringIO
 from typing import Any
-import os
 
 from dotenv import load_dotenv
 
@@ -22,6 +22,7 @@ MANDATORY = {
     "FIRST_SUPERUSER_PASSWORD": random_lower_string(),
     "FIRST_SUPERUSER": random_email(),
     "POSTGRES_DB": random_lower_string(),
+    "POSTGRES_DB_TESTING": random_lower_string(),
     "POSTGRES_PASSWORD": random_lower_string(),
     "POSTGRES_SERVER": random_lower_string(),
     "POSTGRES_USER": random_lower_string(),
@@ -35,7 +36,10 @@ MANDATORY = {
 
 def test_mandatory_and_defaults() -> None:
     settings = make_settings(MANDATORY)
+    print(settings.POSTGRES_DB)
+    print(settings.POSTGRES_DB_TESTING)
     for key, value in MANDATORY.items():
+        print(f"{key} : {value}")
         assert str(getattr(settings, key)) == str(value)
     assert settings.EMAIL_TEMPLATES_DIR == "/app/app/email-templates/build"
     assert settings.EMAILS_ENABLED is False
@@ -52,6 +56,15 @@ def test_assemble_db_connection() -> None:
         f"postgresql://{settings.POSTGRES_USER}:"
         f"{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}/"
         f"{settings.POSTGRES_DB}"
+    )
+
+
+def test_assemble_testing_db_connection() -> None:
+    settings = make_settings(MANDATORY)
+    assert str(settings.SQLALCHEMY_TESTING_DATABASE_URI) == (
+        f"postgresql://{settings.POSTGRES_USER}:"
+        f"{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}/"
+        f"{settings.POSTGRES_DB_TESTING}"
     )
 
 

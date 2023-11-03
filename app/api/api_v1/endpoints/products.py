@@ -2,6 +2,7 @@ from typing import Any, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 import httpx
@@ -26,35 +27,44 @@ def read_products(
     return crud.product.get_multi(db, skip=skip, limit=limit)
 
 
-def _register_product_caller(product_json: schemas.ProductCreate) -> Any:
+def _register_product_caller(product: schemas.ProductCreate) -> Any:
     headers = {'Bearer': settings.AUTHENTICATION_TOKEN}
-    product_register_response = httpx.post(f"{settings.OFFER_SERVICE_URL}/api/v1/products/register",
+    product_register_response = httpx.post(f"{settings.OFFER_SERVICE_BASE_URL}/api/v1/products/register",
                                            headers=headers,
-                                           json=product_json)
+                                           json=jsonable_encoder(product))
     product_register_response.raise_for_status()
 
 
 def _get_authentication_token() -> Any:
     headers = {'Bearer': settings.OFFER_SERVICE_TOKEN}
-    auth_response = httpx.post(f"{settings.OFFER_SERVICE_URL}/api/v1/auth", headers=headers)
+    auth_response = httpx.post(f"{settings.OFFER_SERVICE_BASE_URL}/api/v1/auth", headers=headers)
     auth_response.raise_for_status()
     settings.AUTHENTICATION_TOKEN = auth_response.json()['access_token']
 
 
-def _register_product_in_offer_service(product_json: schemas.ProductCreate) -> Any:
+def _register_product_in_offer_service(product: schemas.ProductCreate) -> Any:
     """
-    helper method to register product in offer service
+    Registers a product in the offer service.
+
+    Args:
+        product (schemas.ProductCreate): The JSON representation of the product to be registered.
+
+    Returns:
+        Any: Returns nothing.
+
+    Raises:
+        HTTPException: If an HTTP status error occurs.
     """
     repeat = 0
     try:
-        _register_product_caller(product_json)
-    except httpx.StatusError as exception:
+        _register_product_caller(product)
+    except httpx.HTTPStatusError as exception:
         if exception.response.status_code == 401 and repeat < 1:
             repeat += 1
             _get_authentication_token()
         else:
             raise HTTPException(status_code=exception.response.status_code, detail=str(exception))
-    except httpx.StatusError as exception:
+    except httpx.RequestError as exception:
         raise HTTPException(status_code=400, detail=str(exception))
 
 
@@ -71,12 +81,12 @@ def create_product(
     Create new Product and register it with service.
     """
     try:
-        _register_product_in_offer_service(product_in.dict())
+        #_register_product_in_offer_service(product_in.model_dump())
         product = crud.product.create(db=db, obj_in=product_in)
 #TODO: Trigger offer download for product just registered
     except httpx.RequestError as exception:
         raise HTTPException(status_code=400, detail=str(exception))
-    except httpx.StatusError as exception:
+    except httpx.HTTPStatusError as exception:
         raise HTTPException(status_code=exception.response.status_code, detail=str(exception))
 
     return product
@@ -86,7 +96,7 @@ def create_product(
     "/{id}",
     response_model=schemas.Product,
     responses={404: {"model": schemas.NotFoundResponse}})
-def update_item(
+def update_product(
     *,
     db: Session = Depends(deps.get_db),
     id: UUID,
