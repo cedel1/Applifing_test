@@ -13,4 +13,4 @@ class Product(Base):
     id = Column(Uuid, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
     description = Column(String, index=True, nullable=False)
-    offers = relationship("Offer", back_populates="product")
+    offers = relationship("Offer", back_populates="product", order_by="Offer.id", cascade="all, delete, delete-orphan")

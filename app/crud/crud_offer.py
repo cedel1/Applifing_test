@@ -15,6 +15,7 @@ class CRUDOffer(CRUDBase[Offer, OfferCreate, OfferUpdate]):
         return (
             db.query(self.model)
             .filter(Offer.product_id == product_id)
+            .order_by(Offer.price.asc())
             .offset(skip)
             .limit(limit)
             .all()

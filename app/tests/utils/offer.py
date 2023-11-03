@@ -17,7 +17,7 @@ def create_random_offer(db: Session, id: UUID=None, price: int=None, items_in_st
             id=id or random_uuid(),
             price=price or random_int(),
             items_in_stock=items_in_stock or random_int(),
-            product_id=product_id or None))
+            product_id=product_id))
 
 
 def create_random_offer_with_product(db: Session, id: UUID=None, price: int=None, items_in_stock: int=None,

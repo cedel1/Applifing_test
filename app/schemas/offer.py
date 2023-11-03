@@ -33,7 +33,7 @@ class OfferInDBBase(OfferBase):
 
 # Properties to return to client
 class Offer(OfferBase):
-    pass
+    id: UUID
 
 
 # Properties stored in DB
