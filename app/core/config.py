@@ -4,7 +4,6 @@ from typing import Any, List, Optional, Union
 from dotenv import load_dotenv
 from pydantic import (AnyHttpUrl, EmailStr, PostgresDsn, ValidationInfo,
                       field_validator)
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -99,8 +98,10 @@ class Settings(BaseSettings):
     USERS_OPEN_REGISTRATION: bool = False
 
     OFFER_SERVICE_TOKEN: str
-    AUTHENTICATION_TOKEN: str
     OFFER_SERVICE_BASE_URL: AnyHttpUrl
+    DOWNLOAD_NEW_OFFERS_TASK_INTERVAL_SECONDS: Optional[int] = 30
+
+    API_MAX_RECORDS_LIMIT: Optional[int] = 100
 
     model_config = SettingsConfigDict(case_sensitive=True)
 

@@ -37,5 +37,48 @@ services:
     ports:
       - 5050:80
 
+  queue:
+    #image: rabbitmq:3
+    # Using the below image instead is required to enable the "Broker" tab in the flower UI:
+    image: rabbitmq:3-management
+    #
+    # You also have to change the flower command
+    ports:
+      - "5672:5672"
+  
+  flower:
+    image: mher/flower
+    depends_on:
+      - queue
+      - celeryworker
+    env_file:
+      - .env
+    environment:
+       - CELERY_BROKER_URL=amqp://guest@queue:5672//
+    ports:
+      - "5555:5555"
+
+  celeryworker:
+    image: '${DOCKER_IMAGE_CELERYWORKER?Variable not set}:${TAG-latest}'
+    depends_on:
+      - db
+      - queue
+    env_file:
+      - .env
+    environment:
+      - SERVER_NAME=${DOMAIN?Variable not set}
+      - SERVER_HOST=${SERVER_HOST}
+    build:
+      context: .
+      dockerfile: celery-worker.dockerfile
+
+  celery-beat:
+    build: .
+    command: celery -A app.worker beat -l info --uid=nobody --gid=nogroup -s /tmp/celerybeat-schedule
+    volumes:
+      - /tmp:/tmp
+    depends_on:
+      - celeryworker
+
 volumes:
   postgres_data:

@@ -1,3 +1,4 @@
+import httpx
 from app.core.config import settings
 from app.models import Offer, Product
 from app.tests.utils.offer import create_random_offer
@@ -26,6 +27,7 @@ def test_product_should_be_created(
     client: TestClient) -> None:
     data = {"id": "3135dcd5-7add-4a27-b669-4f44b9aa9bdd", "name": "Bar", "description": "Dancers"}
     response = client.post(f"{settings.API_V1_STR}/products/", json=data)
+
     assert response.status_code == 201
     content = response.json()
     assert content["id"] == data["id"]

@@ -28,7 +28,6 @@ MANDATORY = {
     "PROJECT_NAME": random_lower_string(),
     "SERVER_HOST": random_url(),
     "OFFER_SERVICE_TOKEN": random_lower_string(),
-    "AUTHENTICATION_TOKEN": random_lower_string(),
     "OFFER_SERVICE_BASE_URL": random_url(),
 }
 

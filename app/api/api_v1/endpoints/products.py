@@ -1,15 +1,23 @@
+import logging
 from typing import List
 from uuid import UUID
 
 import httpx
 from app import crud, schemas
 from app.api import deps
+from app.api.offer_api_auth import auth_token
+from app.core.celery_app import celery_app
 from app.core.config import settings
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
+from tenacity import after_log, before_log, retry, retry_if_result, stop_after_attempt, wait_fixed, wait_random
 
 router = APIRouter()
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -19,7 +27,7 @@ router = APIRouter()
 def read_products(
     db: Session = Depends(deps.get_db),
     skip: int = 0,
-    limit: int = 100
+    limit: int = settings.API_MAX_RECORDS_LIMIT
 ) -> List[schemas.Product]:
     """
     Retrieves a list of products from the database.
@@ -35,55 +43,32 @@ def read_products(
     return crud.product.get_multi(db=db, skip=skip, limit=limit)
 
 
-def _register_product_caller(product: schemas.ProductCreate) -> None:
-    """
-    This function is responsible for registering a product.
-
-    Args:
-        product (schemas.ProductCreate): The product to be registered.
-
-    Returns:
-        None: The response from the product registration API call.
-
-    Raises:
-        HTTPStatusError: If the product registration API call returns an error status code.
-    """
-    headers = {'Bearer': settings.AUTHENTICATION_TOKEN}
-    product_register_response = httpx.post(f"{settings.OFFER_SERVICE_BASE_URL}/api/v1/products/register",
-                                           headers=headers,
-                                           json=jsonable_encoder(product))
-    product_register_response.raise_for_status()
+def _should_retry_registration(value):
+    return (
+        value == httpx.HTTPStatusError
+        and value.response.status_code == 401
+        and auth_token.refresh_access_token())
 
 
-def _get_authentication_token() -> None:
-    headers = {'Bearer': settings.OFFER_SERVICE_TOKEN}
-    auth_response = httpx.post(f"{settings.OFFER_SERVICE_BASE_URL}/api/v1/auth", headers=headers)
-    auth_response.raise_for_status()
-    settings.AUTHENTICATION_TOKEN = auth_response.json()['access_token']
-
-
-def _register_product_in_offer_service(product: schemas.ProductCreate) -> None:
-    """
-    Registers a product in the offer service.
-
-    Args:
-        product (schemas.ProductCreate): The JSON representation of the product to be registered.
-
-    Returns:
-        None: Returns nothing.
-
-    Raises:
-        HTTPException: If an HTTP status error occurs.
-    """
-    repeat = 0
+@retry(
+    retry=retry_if_result(_should_retry_registration),
+    stop=stop_after_attempt(2),
+    wait=wait_fixed(1),
+    before=before_log(logger, logging.INFO),
+    after=after_log(logger, logging.WARN),
+)
+def register_product_in_offer_service(
+        product_in: schemas.ProductCreate,
+        auth_token: str = Depends(auth_token)
+) -> httpx.Response:
     try:
-        _register_product_caller(product)
-    except httpx.HTTPStatusError as exception:
-        if exception.response.status_code == 401 and repeat < 1:
-            repeat += 1
-            _get_authentication_token()
-        else:
-            raise HTTPException(status_code=exception.response.status_code, detail=str(exception))
+        with httpx.Client() as client:
+            headers = {"Authorization": f"Bearer: {auth_token}"}
+            product_register_response = client.post(f"{settings.OFFER_SERVICE_BASE_URL}/api/v1/products/register",
+                                                   headers=headers,
+                                                   json=jsonable_encoder(product_in))
+            product_register_response.raise_for_status()
+            return product_register_response
     except httpx.RequestError as exception:
         raise HTTPException(status_code=400, detail=str(exception))
 
@@ -93,9 +78,9 @@ def _register_product_in_offer_service(product: schemas.ProductCreate) -> None:
     response_model=schemas.Product,
     status_code=status.HTTP_201_CREATED)
 def create_product(
-    *,
-    db: Session = Depends(deps.get_db),
     product_in: schemas.ProductCreate,
+    db: Session = Depends(deps.get_db),
+    registered_product_response: dict = Depends(register_product_in_offer_service),
 ) -> schemas.Product:
     """
     Create a new product.
@@ -111,9 +96,11 @@ def create_product(
         HTTPException: If there is an error during the request.
     """
     try:
-        #_register_product_in_offer_service(product_in.model_dump())
-        product = crud.product.create(db=db, obj_in=product_in)
-#TODO: Trigger offer download for product just registered
+        if registered_product_response.json()['id'] == str(product_in.id):
+            product = crud.product.create(db=db, obj_in=product_in)
+            celery_app.send_task("app.worker.download_offers_for_product", args=[str(product_in.id)])
+        else:
+            raise HTTPException(status_code=400, detail="External API returned different product id than expected")
     except httpx.RequestError as exception:
         raise HTTPException(status_code=400, detail=str(exception))
     except httpx.HTTPStatusError as exception:

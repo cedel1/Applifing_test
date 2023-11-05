@@ -1,11 +1,11 @@
 from typing import List
 
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy.orm import Session
-
+from app.core.config import settings
 from app.crud.base import CRUDBase
 from app.models.item import Item
 from app.schemas.item import ItemCreate, ItemUpdate
+from fastapi.encoders import jsonable_encoder
+from sqlalchemy.orm import Session
 
 
 class CRUDItem(CRUDBase[Item, ItemCreate, ItemUpdate]):
@@ -20,7 +20,7 @@ class CRUDItem(CRUDBase[Item, ItemCreate, ItemUpdate]):
         return db_obj
 
     def get_multi_by_owner(
-        self, db: Session, *, owner_id: int, skip: int = 0, limit: int = 100
+        self, db: Session, *, owner_id: int, skip: int = 0, limit: int = settings.API_MAX_RECORDS_LIMIT
     ) -> List[Item]:
         return (
             db.query(self.model)
