@@ -1,14 +1,13 @@
-from typing import Any, List
+from typing import List
 from uuid import UUID
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy.orm import Session
 
 import httpx
 from app import crud, schemas
 from app.api import deps
 from app.core.config import settings
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.encoders import jsonable_encoder
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -36,7 +35,7 @@ def read_products(
     return crud.product.get_multi(db=db, skip=skip, limit=limit)
 
 
-def _register_product_caller(product: schemas.ProductCreate) -> Any:
+def _register_product_caller(product: schemas.ProductCreate) -> None:
     """
     This function is responsible for registering a product.
 
@@ -44,7 +43,7 @@ def _register_product_caller(product: schemas.ProductCreate) -> Any:
         product (schemas.ProductCreate): The product to be registered.
 
     Returns:
-        Any: The response from the product registration API call.
+        None: The response from the product registration API call.
 
     Raises:
         HTTPStatusError: If the product registration API call returns an error status code.
@@ -63,7 +62,7 @@ def _get_authentication_token() -> None:
     settings.AUTHENTICATION_TOKEN = auth_response.json()['access_token']
 
 
-def _register_product_in_offer_service(product: schemas.ProductCreate) -> Any:
+def _register_product_in_offer_service(product: schemas.ProductCreate) -> None:
     """
     Registers a product in the offer service.
 
@@ -71,7 +70,7 @@ def _register_product_in_offer_service(product: schemas.ProductCreate) -> Any:
         product (schemas.ProductCreate): The JSON representation of the product to be registered.
 
     Returns:
-        Any: Returns nothing.
+        None: Returns nothing.
 
     Raises:
         HTTPException: If an HTTP status error occurs.
@@ -97,7 +96,7 @@ def create_product(
     *,
     db: Session = Depends(deps.get_db),
     product_in: schemas.ProductCreate,
-) -> Any:
+) -> schemas.Product:
     """
     Create a new product.
 
@@ -160,6 +159,7 @@ def update_product(
     responses={404: {"model": schemas.NotFoundResponse}}
 )
 def read_product(
+    *,
     db: Session = Depends(deps.get_db),
     id: UUID
 ) -> schemas.Product:
@@ -201,13 +201,11 @@ def read_product_offers(
 
     Returns:
         - List[schemas.Offer]: A list of offer schemas.
-
-    Raises:
-        - HTTPException: If no offers are found for the product.
     """
-    offers = crud.offer.get_multi_by_product(db=db, product_id=id)
-    if not offers:
-        raise HTTPException(status_code=404, detail="No offers found")
+    product = crud.product.get(db=db, id=id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    offers = crud.offer.get_multi_by_product(db=db, product_id=product.id)
     return offers
 
 

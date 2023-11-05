@@ -2,10 +2,9 @@ import os
 from io import StringIO
 from typing import Any
 
-from dotenv import load_dotenv
-
 from app.core.config import Settings
 from app.tests.utils.utils import random_email, random_lower_string, random_url
+from dotenv import load_dotenv
 
 
 def make_settings(env_items: dict[str, Any]):
@@ -36,8 +35,6 @@ MANDATORY = {
 
 def test_mandatory_and_defaults() -> None:
     settings = make_settings(MANDATORY)
-    print(settings.POSTGRES_DB)
-    print(settings.POSTGRES_DB_TESTING)
     for key, value in MANDATORY.items():
         print(f"{key} : {value}")
         assert str(getattr(settings, key)) == str(value)
