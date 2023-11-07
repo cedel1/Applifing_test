@@ -137,7 +137,7 @@ def update_product(
     product = crud.product.get(db=db, id=id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    return crud.item.update(db=db, db_obj=product, obj_in=product_in)
+    return crud.product.update(db=db, db_obj=product, obj_in=product_in)
 
 
 @router.get(

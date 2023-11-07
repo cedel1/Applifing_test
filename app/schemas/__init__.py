@@ -1,4 +1,3 @@
-from .item import Item, ItemCreate, ItemInDB, ItemUpdate
 from .msg import Msg
 from .offer import Offer, OfferInDB
 from .product import (Product, ProductCreate, ProductDelete, ProductInDB,
