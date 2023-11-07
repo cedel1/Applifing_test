@@ -67,7 +67,6 @@ def register_product_in_offer_service(
             product_register_response = client.post(f"{settings.OFFER_SERVICE_BASE_URL}/api/v1/products/register",
                                                    headers=headers,
                                                    json=jsonable_encoder(product_in))
-            product_register_response.raise_for_status()
             return product_register_response
     except httpx.RequestError as exception:
         raise HTTPException(status_code=400, detail=str(exception))
@@ -95,6 +94,9 @@ def create_product(
     Raises:
         HTTPException: If there is an error during the request.
     """
+    if registered_product_response.status_code != 201:
+        raise HTTPException(status_code=registered_product_response.status_code)
+
     try:
         if registered_product_response.json()['id'] == str(product_in.id):
             product = crud.product.create(db=db, obj_in=product_in)

@@ -1,7 +1,14 @@
 import httpx
+from app import crud
+from app.api.api_v1.endpoints.products import register_product_in_offer_service
 from app.core.config import settings
+from app.main import app
 from app.models import Offer, Product
 from app.tests.utils.offer import create_random_offer
+from app.tests.utils.overrides import (
+    override_register_product_in_offer_service_returns_201,
+    override_register_product_in_offer_service_returns_401,
+    override_register_product_in_offer_service_returns_422)
 from app.tests.utils.product import create_random_product
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -23,8 +30,33 @@ def test_multiple_product_should_be_read(
     assert content[1]["description"] == product2.description
 
 
+def test_product_should_react_to_401_response_from_product_registration_service(
+    client: TestClient, db: Session) -> None:
+    app.dependency_overrides[register_product_in_offer_service] = override_register_product_in_offer_service_returns_401
+    data = {"id": "3135dcd5-7add-4a27-b669-4f44b9aa9bee", "name": "Bar", "description": "Dancers"}
+    response = client.post(f"{settings.API_V1_STR}/products/", json=data)
+
+    assert response.status_code == 401
+    content = response.json()
+    assert content["detail"] == "Unauthorized"
+    assert not crud.product.get(db, id="3135dcd5-7add-4a27-b669-4f44b9aa9bee")
+
+
+def test_product_should_react_to_422_response_from_product_registration_service(
+    client: TestClient, db: Session) -> None:
+    app.dependency_overrides[register_product_in_offer_service] = override_register_product_in_offer_service_returns_422
+    data = {"id": "3135dcd5-7add-4a27-b669-4f44b9aa9bee", "name": "Bar", "description": "Dancers"}
+    response = client.post(f"{settings.API_V1_STR}/products/", json=data)
+
+    assert response.status_code == 422
+    content = response.json()
+    assert content["detail"] == "Unprocessable Entity"
+    assert not crud.product.get(db, id="3135dcd5-7add-4a27-b669-4f44b9aa9bff")
+
+
 def test_product_should_be_created(
     client: TestClient) -> None:
+    app.dependency_overrides[register_product_in_offer_service] = override_register_product_in_offer_service_returns_201
     data = {"id": "3135dcd5-7add-4a27-b669-4f44b9aa9bdd", "name": "Bar", "description": "Dancers"}
     response = client.post(f"{settings.API_V1_STR}/products/", json=data)
 
