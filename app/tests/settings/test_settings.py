@@ -29,6 +29,8 @@ MANDATORY = {
     "SERVER_HOST": random_url(),
     "OFFER_SERVICE_TOKEN": random_lower_string(),
     "OFFER_SERVICE_BASE_URL": random_url(),
+    "REDIS_SERVER": random_lower_string(),
+    "REDIS_PASSWORD": random_lower_string(),
 }
 
 

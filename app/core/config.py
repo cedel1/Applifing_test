@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     OFFER_SERVICE_TOKEN: str
     OFFER_SERVICE_BASE_URL: AnyHttpUrl
     DOWNLOAD_NEW_OFFERS_TASK_INTERVAL_SECONDS: Optional[int] = 30
+    OFFER_SERVICE_REFRESH_TOKEN_EXPIRE_SECONDS: Optional[int] = 5*60
+    REDIS_SERVER: str
+    REDIS_PASSWORD: str
 
     API_MAX_RECORDS_LIMIT: Optional[int] = 100
 

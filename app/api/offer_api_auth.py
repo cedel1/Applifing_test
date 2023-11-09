@@ -1,35 +1,36 @@
-import time
-
 import httpx
 from app.core.config import settings
-from dateutil import relativedelta
 from fastapi.exceptions import HTTPException
+from app.core.redis import get_redis_pool
+from redis import Redis
+from typing import Iterator
 
 
 class OAuth2Authorization:
-    def __init__(self, client_secret: str, token_url: str) -> None:
+    def __init__(self, client_secret: str, token_url: str, redis_pool: Iterator[Redis]) -> None:
         self.client_secret = client_secret
         self.token_url = token_url
-        self.access_token = None
-        self.token_expiration = None
+        self.redis_pool = redis_pool
 
-    def __call__(self, forced_token_refresh: bool = False) -> None:
-        if self.access_token is None or self.token_expired() or forced_token_refresh:
-            self.refresh_access_token()
-        return self.access_token
+    def __call__(self, ) -> None:
+        with self.redis_pool as redis:
+            token = redis.get('offer_service_access_token')
+            if token is None:
+                token = self.refresh_access_token(redis)
+        return token
 
-    def token_expired(self) -> bool:
-        return self.token_expiration is None or self.token_expiration < time.time()
-
-    def refresh_access_token(self) -> None:
-        headers = {"Authorization": f"Bearer: {self.client_secret}"}
+    def refresh_access_token(self, redis: Redis) -> None:
+        headers = {'Bearer': self.client_secret, 'accept': 'application/json'}
         try:
             with httpx.Client() as client:
                 response = client.post(self.token_url, headers=headers)
                 response.raise_for_status()
-                token_data = response.json()
-                self.access_token = token_data.get("access_token")
-                self.token_expiration = time.time() + relativedelta(minutes=5)
+                token_string = response.json().get("access_token")
+                redis.set(
+                    'offer_service_access_token',
+                    token_string,
+                    ex=settings.OFFER_SERVICE_REFRESH_TOKEN_EXPIRE_SECONDS)
+                return token_string
         except KeyError as exception:
             raise HTTPException(status_code=400, detail="access token field not received in response")
         except httpx.RequestError as exception:
@@ -40,5 +41,6 @@ class OAuth2Authorization:
 
 auth_token = OAuth2Authorization(
     client_secret=settings.OFFER_SERVICE_TOKEN,
-    token_url=f"{settings.OFFER_SERVICE_BASE_URL}/api/v1/auth",
+    token_url=f"{settings.OFFER_SERVICE_BASE_URL}api/v1/auth",
+    redis_pool=get_redis_pool(host=settings.REDIS_SERVER, password=settings.REDIS_PASSWORD),
     )
