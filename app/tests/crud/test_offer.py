@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.schemas.offer import OfferCreate, OfferUpdate
-from app.tests.utils.offer import create_random_offer_with_product
+from app.tests.utils.offer import create_random_offer_with_product, create_random_offer
 from app.tests.utils.product import create_random_product
 from app.tests.utils.utils import random_int, random_uuid
 
@@ -76,3 +76,27 @@ def test_create_or_update_offer_should_update_offer(db: Session) -> None:
     assert offer_update.product_id == offer2.product_id
     assert offer2.product_id == offer.product.id
     assert current_offer_count == crud.offer.count(db)
+
+
+def test_get_multi_by_product_should_return_list_of_offers_filtered_by_product(db: Session) -> None:
+    product = create_random_product(db=db)
+    create_random_offer(db=db, product_id=product.id)
+    create_random_offer(db=db, product_id=product.id)
+    random_other_offer = create_random_offer_with_product(db=db)
+    offers = crud.offer.get_multi_by_product(db=db, product_id=product.id)
+    assert len(offers) == 2
+    for offer in offers:
+        assert offer.product_id == product.id
+
+
+def test_remove_multiple_by_id_should_remove_multiple_offers(db: Session) -> None:
+    offer_1_id = create_random_offer_with_product(db).id
+    offer_2_id = create_random_offer_with_product(db).id
+    offer_3_id = create_random_offer_with_product(db).id
+    offer_4_id = create_random_offer_with_product(db).id
+    offer_ids_to_remove = [offer_1_id, offer_2_id]
+    crud.offer.remove_multiple_by_id(db=db, ids=offer_ids_to_remove)
+    assert None == crud.offer.get(db=db, id=offer_1_id)
+    assert None == crud.offer.get(db=db, id=offer_2_id)
+    assert offer_3_id == crud.offer.get(db=db, id=offer_3_id).id
+    assert offer_4_id == crud.offer.get(db=db, id=offer_4_id).id

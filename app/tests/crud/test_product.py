@@ -48,3 +48,10 @@ def test_delete_product(db: Session) -> None:
     assert product2.id == id
     assert product2.name == name
     assert product2.description == description
+
+
+def test_get_number_of_products_should_return_number_of_products(db: Session, clear_db_products) -> None:
+    product_count = 5
+    for _ in range(product_count):
+        create_random_product(db)
+    assert crud.product.get_number_of_products(db=db) == product_count
