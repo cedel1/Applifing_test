@@ -31,14 +31,6 @@ def read_products(
 ) -> List[schemas.Product]:
     """
     Retrieves a list of products from the database.
-
-    Parameters:
-        db (Session): The database session to use.
-        skip (int): The number of products to skip.
-        limit (int): The maximum number of products to retrieve.
-
-    Returns:
-        List[schemas.Product]: A list of product objects.
     """
     return crud.product.get_multi(db=db, skip=skip, limit=limit)
 
@@ -63,8 +55,9 @@ def register_product_in_offer_service(
 ) -> httpx.Response:
     try:
         with httpx.Client() as client:
-            headers = {"Authorization": f"Bearer: {auth_token}"}
-            product_register_response = client.post(f"{settings.OFFER_SERVICE_BASE_URL}/api/v1/products/register",
+            headers = {"Bearer": auth_token}
+            print(jsonable_encoder(product_in))
+            product_register_response = client.post(f"{settings.OFFER_SERVICE_BASE_URL}api/v1/products/register",
                                                    headers=headers,
                                                    json=jsonable_encoder(product_in))
             return product_register_response
@@ -83,16 +76,6 @@ def create_product(
 ) -> schemas.Product:
     """
     Create a new product.
-
-    Parameters:
-        db (Session): The database session.
-        product_in (schemas.ProductCreate): The input data for creating the product.
-
-    Returns:
-        Any: The created product.
-
-    Raises:
-        HTTPException: If there is an error during the request.
     """
     if registered_product_response.status_code != 201:
         raise HTTPException(status_code=registered_product_response.status_code)
@@ -123,18 +106,6 @@ def update_product(
 ) -> schemas.Product:
     """
     Update a product in the database.
-
-    Args:
-        db (Session): The database session.
-        id (UUID): The ID of the product to update.
-        product_in (ProductUpdate): The updated product data.
-
-    Returns:
-        schemas.Product: The updated product.
-
-    Raises:
-        HTTPException: If the product with the given ID is not found.
-
     """
     product = crud.product.get(db=db, id=id)
     if not product:
@@ -154,16 +125,6 @@ def read_product(
 ) -> schemas.Product:
     """
     Retrieve a specific product by its ID.
-
-    Arguments:
-    - `db` (Session): The database session object.
-    - `id` (UUID): The ID of the product to retrieve.
-
-    Returns:
-    - `Product`: The retrieved product.
-
-    Raises:
-    - `HTTPException`: If the product with the given ID is not found.
     """
     product = crud.product.get(db=db, id=id)
     if not product:
@@ -183,13 +144,6 @@ def read_product_offers(
 ) -> List[schemas.Offer]:
     """
     Retrieve a list of offers for a specific product.
-
-    Parameters:
-        - db (Session): The database session dependency.
-        - id (UUID): The ID of the product.
-
-    Returns:
-        - List[schemas.Offer]: A list of offer schemas.
     """
     product = crud.product.get(db=db, id=id)
     if not product:
@@ -210,16 +164,6 @@ def delete_product(
 ) -> schemas.Product:
     """
     Delete a product from the database.
-
-    Parameters:
-        - db (Session): The database session.
-        - id (UUID): The ID of the product to be deleted.
-
-    Returns:
-        - Product: The deleted product.
-
-    Raises:
-        - HTTPException(404): If the product is not found in the database.
     """
     product = crud.product.get(db=db, id=id)
     if not product:

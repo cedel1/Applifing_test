@@ -11,7 +11,7 @@ from .base import CRUDBase
 
 class CRUDOffer(CRUDBase[Offer, OfferCreate, OfferUpdate]):
     def get_multi_by_product(
-        self, db: Session, *, product_id: UUID, skip: int = 0, limit: int = settings.API_MAX_RECORDS_LIMIT
+        self, db: Session, *, product_id: str, skip: int = 0, limit: int = settings.API_MAX_RECORDS_LIMIT
     ) -> List[Offer]:
         return (
             db.query(self.model)
@@ -21,6 +21,10 @@ class CRUDOffer(CRUDBase[Offer, OfferCreate, OfferUpdate]):
             .limit(limit)
             .all()
         )
+
+    def remove_multiple_by_id(self, db: Session, *, ids: List[UUID]) -> None:
+        db.query(self.model).filter(self.model.id.in_(ids)).delete(synchronize_session="fetch")
+        db.commit()
 
 
 offer = CRUDOffer(Offer)

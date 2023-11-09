@@ -1,4 +1,5 @@
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
+from uuid import UUID
 
 from app.core.config import settings
 from app.db.base_class import Base
@@ -30,6 +31,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self, db: Session, *, skip: int = 0, limit: int = settings.API_MAX_RECORDS_LIMIT
     ) -> List[ModelType]:
         return db.query(self.model).offset(skip).limit(limit).all()
+
+    def get_multi_id(
+        self, db: Session, *, skip: int = 0, limit: int = settings.API_MAX_RECORDS_LIMIT
+    ) -> List[UUID]:
+        return db.query(self.model.id).offset(skip).limit(limit).all()
 
     def count(self, db: Session) -> int:
         return db.query(self.model).count()
@@ -63,7 +69,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     def create_or_update(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
-        db_obj = self.get(db=db, id=obj_in.id)
+        obj_in_data = jsonable_encoder(obj_in)
+        db_obj = self.get(db=db, id=obj_in_data.get("id", None))
         db_obj = (
             self.update(db, db_obj=db_obj, obj_in=obj_in)
             if db_obj
