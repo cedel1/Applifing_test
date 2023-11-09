@@ -6,7 +6,7 @@ celery_app = Celery("worker", broker=f"redis://:{settings.REDIS_PASSWORD}@{setti
                     result_backend=f"redis://:{settings.REDIS_PASSWORD}@{settings.REDIS_SERVER}:6379/0")
 
 celery_app.conf.task_routes = {
-    "app.worker.test_celery": "main-queue",
-    "app.worker.download_product_offers": "main-queue",
-    "app.worker.download_offers_for_product": "main-queue",
+    "app.celery.worker.test_celery": "main-queue",
+    "app.celery.worker.download_product_offers": "main-queue",
+    "app.celery.worker.download_offers_for_product": "main-queue",
 }

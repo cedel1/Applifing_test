@@ -23,6 +23,34 @@ app.dependency_overrides[get_db] = override_get_db
 app.dependency_overrides[auth_token] = override_auth_token
 
 
+class MockCelery:
+    @staticmethod
+    def send_task(*args, **kwargs):
+        pass
+
+
+class MockClient:
+    @staticmethod
+    def json():
+        return [
+            {"id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+             "price": 12345,
+             "items_in_stock": 10}
+        ]
+
+    @staticmethod
+    def raise_for_status():
+        pass
+
+
+def get_mocked_celery(*args, **kwargs):
+    return MockCelery()
+
+
+def get_mocked_client_get(*args, **kwargs):
+        return MockClient()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def db() -> Generator:
     # It is also a bit tricky, since we are dealing with at least two connection - one from engine and one from session.

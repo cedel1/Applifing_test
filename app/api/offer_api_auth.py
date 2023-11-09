@@ -1,12 +1,13 @@
-import httpx
-from app.core.config import settings
-from fastapi.exceptions import HTTPException
-from app.core.redis import get_redis_pool
-from redis import Redis
 from typing import Iterator
 
+import httpx
+from app.core.config import settings
+from app.core.redis import get_redis_pool
+from fastapi.exceptions import HTTPException
+from redis import Redis
 
-class OAuth2Authorization:
+
+class OfferServiceAuthorization:
     def __init__(self, client_secret: str, token_url: str, redis_pool: Iterator[Redis]) -> None:
         self.client_secret = client_secret
         self.token_url = token_url
@@ -39,7 +40,7 @@ class OAuth2Authorization:
             raise HTTPException(status_code=exception.response.status_code, detail=str(exception))
 
 
-auth_token = OAuth2Authorization(
+auth_token = OfferServiceAuthorization(
     client_secret=settings.OFFER_SERVICE_TOKEN,
     token_url=f"{settings.OFFER_SERVICE_BASE_URL}api/v1/auth",
     redis_pool=get_redis_pool(host=settings.REDIS_SERVER, password=settings.REDIS_PASSWORD),

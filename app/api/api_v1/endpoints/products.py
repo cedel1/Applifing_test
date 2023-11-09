@@ -11,7 +11,8 @@ from app.core.config import settings
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
-from tenacity import after_log, before_log, retry, retry_if_result, stop_after_attempt, wait_fixed, wait_random
+from tenacity import (after_log, before_log, retry, retry_if_result,
+                      stop_after_attempt, wait_fixed, wait_random)
 
 router = APIRouter()
 
@@ -56,7 +57,6 @@ def register_product_in_offer_service(
     try:
         with httpx.Client() as client:
             headers = {"Bearer": auth_token}
-            print(jsonable_encoder(product_in))
             product_register_response = client.post(f"{settings.OFFER_SERVICE_BASE_URL}api/v1/products/register",
                                                    headers=headers,
                                                    json=jsonable_encoder(product_in))
@@ -83,7 +83,7 @@ def create_product(
     try:
         if registered_product_response.json()['id'] == str(product_in.id):
             product = crud.product.create(db=db, obj_in=product_in)
-            celery_app.send_task("app.worker.download_offers_for_product", args=[str(product_in.id)])
+            celery_app.send_task("app.celery.worker.download_offers_for_product", args=[str(product_in.id)])
         else:
             raise HTTPException(status_code=400, detail="External API returned different product id than expected")
     except httpx.RequestError as exception:

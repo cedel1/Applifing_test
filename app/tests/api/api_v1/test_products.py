@@ -1,9 +1,11 @@
 import httpx
 from app import crud
 from app.api.api_v1.endpoints.products import register_product_in_offer_service
+from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.main import app
 from app.models import Offer, Product
+from app.tests.conftest import get_mocked_celery
 from app.tests.utils.offer import create_random_offer
 from app.tests.utils.overrides import (
     override_register_product_in_offer_service_returns_201,
@@ -55,8 +57,11 @@ def test_product_should_react_to_422_response_from_product_registration_service(
 
 
 def test_product_should_be_created(
-    client: TestClient) -> None:
+    client: TestClient,
+    monkeypatch) -> None:
     app.dependency_overrides[register_product_in_offer_service] = override_register_product_in_offer_service_returns_201
+    monkeypatch.setattr(celery_app, "send_task", get_mocked_celery)
+
     data = {"id": "3135dcd5-7add-4a27-b669-4f44b9aa9bdd", "name": "Bar", "description": "Dancers"}
     response = client.post(f"{settings.API_V1_STR}/products/", json=data)
 
@@ -172,6 +177,3 @@ def test_product_offers_should_return_not_found_if_product_does_not_exist(
     assert response.status_code == 404
     response_content = response.json()
     assert response_content["detail"] == "Product not found"
-
-
-#TODO: Test wrong response from registration service
