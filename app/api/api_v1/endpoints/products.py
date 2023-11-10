@@ -3,7 +3,7 @@ from typing import List
 from uuid import UUID
 
 import httpx
-from app import crud, schemas
+from app import crud, models, schemas
 from app.api import deps
 from app.api.offer_api_auth import auth_token
 from app.core.celery_app import celery_app
@@ -72,6 +72,7 @@ def register_product_in_offer_service(
 def create_product(
     product_in: schemas.ProductCreate,
     db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_active_user),
     registered_product_response: dict = Depends(register_product_in_offer_service),
 ) -> schemas.Product:
     """
@@ -103,6 +104,7 @@ def update_product(
     db: Session = Depends(deps.get_db),
     id: UUID,
     product_in: schemas.ProductUpdate,
+    current_user: models.User = Depends(deps.get_current_active_user),
 ) -> schemas.Product:
     """
     Update a product in the database.
@@ -160,7 +162,8 @@ def read_product_offers(
 def delete_product(
     *,
     db: Session = Depends(deps.get_db),
-    id: UUID
+    id: UUID,
+    current_user: models.User = Depends(deps.get_current_active_user),
 ) -> schemas.Product:
     """
     Delete a product from the database.
