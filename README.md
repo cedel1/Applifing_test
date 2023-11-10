@@ -1,56 +1,41 @@
-# 🚀  fastapi-postgresql-starterkit - The Backend Saga! 🎉
+# How to Install and Run This Excersise
 
-![Badge](https://img.shields.io/badge/Made%20with-FastAPI-green)
-![Badge](https://img.shields.io/badge/PostgreSQL-For%20All%20Your%20Data%20Needs-blue)
-![Badge](https://img.shields.io/badge/Dockerized-Yep!-2496ED)
-![Badge](https://img.shields.io/badge/Forked-But%20Revamped-red)
+## Steps to run this locally:
 
-Hello there, coding wanderer! 🌍 If you're here, you probably love FastAPI, enjoy PostgreSQL, and adore backends. Oh, and did I mention? We're now sailing smoothly with Docker! 🐳 No more environment discrepancies, just pure coding bliss.
+1. Make sure you have Docker installed on your computer.
+2. Go to the repository (you are most likely there, if you are reading this) and either download the project to a directory or clone the project using git.
+3. Open file `.env` located at the root of the project. This file contains basic settings for the project. You may change these as you see fit. Actually, it is **recommended** to do just that, as the file contains secrets and was placed in a repo, which would not be a smart move to do, if this wasn't an excersise. Note that on some operating systems (Linux, MacOS etc.), the files whose names start with `.` (dot) are considered hidden. If you don't see the file, make sure you have hidden files displayed.
+3. Open a terminal and change to the directory where you cloned or downloaded the exercise project.
+5. Run `docker compose up --build` command. That should download the required images and run the project in terminal (display runtime messages etc.). If you want to run it in the background, use `docker compose up -d --build` command. The `--build` flag will rebuild the images, so once you are satisfied (or in production), you can safely omit it (but without it the Celery images/container will not be updated on the next run, since it does not have autoreload set on code change).
+6. Once the project builds, you can access the API and tools. These are described in the next section.
+7. To run the test (which are rather basic and incomplete at the moment), keep the containers running and in a separate terminal (or the same one, if you chose to use the `-d` daemon mode flag) enter the following command: `docker exec fastapi-app bash test.sh`. If you want faster running test (and can do without a test coverage report), you can also run `docker exec fastapi-app pytest [optional_test_path]`.
 
-## Why This Project? 🤔
+## Available API and Tools
 
-Because the backend is where the real action happens! It's like the backstage of a rock concert - not visible to all, but without it, the show won't go on!
+If you run the stack locally on your computer, you should have the following tools available at the following URLs. If the project is not run locally, the URLs might change.
 
-## What's Changed? ⏳
+- The **API** proper: `http://localhost:4000`
+- The API **OpenAPI** description (you can also use this to test the API): `http://localhost:4000/docs`
+- **PgAdmin** (PostgreSQL administration tool, see the `.env` file for login details): `http://localhost:5050/browser/`
+- **Flower** (Celery monitoring tool): `http://localhost:5555`
 
-I took the majestic backend of the original `full-stack-fastapi-postgresql` project, dusted off the cobwebs, replaced the rusty bolts, and added a sprinkle of Docker goodness! A modernized, faster, and improved version now awaits you.
+## Description of the Stack and Notes
 
-## Features 🌈
+The whole exercise is based in FastAPI, PostgreSQL, Celery, Celery Beat, Redis and the above monitoring and documentation tools.
 
-1. **FastAPI Magic** - Because speed is not just about Fast & Furious movies!
-2. **PostgreSQL Integration** - Store data like a pro. No more data loss nightmares!
-3. **Docker Integration** - Set sail with a consistent environment. Because why let tech discrepancies ruin your day?
-4. **Fixes, Fixes, Fixes** - All those bugs? Gone! (Well, most of them, but let's be optimistic!)
+It is based on fastapi-postgresql-starterkit project, but modified in a few ways:
 
-## Setup & Run 🏃‍♂️
+- Tests use separate PostgreSQL database, so running tests does not mess with production database (this took quite some time to figure out, sorry for the delay).
+- Celery and Flower were added (in a similar way to `https://github.com/tiangolo/full-stack-fastapi-postgresql` project.
+- Celery backend and results store was changed to Redis. Redis (and its automatic key expiration) was also used for storing Offer API this is connected to. Unfortunately, it seems there is no free SQLAlchemy redis dialect, so it has to be used on rather low level.
+- Celery Beat is used for planning the periodical Offer download from (provided) external API. The Periodicity can be set via environment variable (or via the `.env` file) using `DOWNLOAD_NEW_OFFERS_TASK_INTERVAL` setting (in seconds)
+- Dependencies in the original template project are managed by `requirements.txt` file, which seems to be a bit bloated with unnecessary dependencies. So I have provided a new file `requirements_minimal.txt` which is not very well tested, so it's not used by default.
 
-To set this baby up:
 
-If you don't have one yet, set up a .env file with your configuration.  For a basic version for local testing use:  
-```bash
-cp dot-env-template .env
-```
-Be aware that .env is *excluded from git* because it contains secrets, API keys and so on.  **Never put your .env file into git.**
+## Notes on Usage of the provided API:
 
-Then build and start the test/debug stack with:
-```bash
-docker-compose up --build
-```
-
-Then:
-- Visit http://localhost:4000/docs for the interactive API docs (Swagger). For initial super-username and password to first authenticate see your **.env** file.
-- Modify your code, which is linked into the *fastapi-app* container and watch uvicorn auto-restart your app when changes have been made.
-- Run pytest in your container with `docker exec fastapi-app bash ./test.sh [optional parameters]`
-- Visit http://localhost:5050/ for the PostgreSQL administrator. Upon first use you'll need to register your DB server using your **.env** file.
-
-## Contribute! 🤝
-
-Did you find more ancient bugs lurking around? Or perhaps you unearthed a potential treasure in the form of a feature? Pull requests are more than welcome. After all, multiple minds make light work. Let's polish this backend to be more radiant than a starry night! 💫
-
-## Credits & A Bow 🎖️
-
-A grand salute to the maestro behind the original `full-stack-fastapi-postgresql`. Their innovative groundwork laid the foundation, allowing this revamped symphony to come to life.
-
-## A Chuckle For the Road 😄
-
-Here's a nugget of wisdom: The frontend is your application's charming smile, but the backend? That's the beating heart and the brilliant mind! Nurture it, for a healthy heart and a sharp mind make dreams come alive. 😉
+- The product endpoints can be found under `/api/v1/products/` route.
+- Note that calling `POST /api/v1/products/` will register the product in 'remote' service then create it in 'local' database and immediately download the offers related to the product just registered.
+- If the product registration in 'remote' service fails, an error is returned and product is not registered in 'local' database (so a user/admin can take appropriate action to remedy the situation).
+- Product DELETE also deletes related downloaded offers. This is a deliberate decision. There are many other possible solutions - for example the product (and offers) could be kept in the 'local' database and just marked as inactive.
+- Offers can be found under the `/api/v1/offers/` route and are read only - they are downloaded from the remote service by periodic Celery task (triggered by Celery Beat).
