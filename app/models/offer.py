@@ -1,12 +1,11 @@
 from typing import TYPE_CHECKING
 
+from app.db.base_class import Base
 from sqlalchemy import Column, ForeignKey, Integer, Uuid
 from sqlalchemy.orm import relationship
 
-from app.db.base_class import Base
-
 if TYPE_CHECKING:
-    from .product import Product # noqa: F401
+    from .product import Product  # noqa: F401
 
 
 class Offer(Base):

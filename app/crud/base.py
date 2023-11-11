@@ -68,6 +68,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.refresh(db_obj)
         return db_obj
 
+    def exists(self, db: Session, *, id: Any) -> bool:
+        return bool(self.get(db=db, id=id))
+
     def create_or_update(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
         obj_in_data = jsonable_encoder(obj_in)
         db_obj = self.get(db=db, id=obj_in_data.get("id", None))

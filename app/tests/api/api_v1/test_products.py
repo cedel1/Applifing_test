@@ -12,6 +12,7 @@ from app.tests.utils.offer import create_random_offer
 from app.tests.utils.overrides import (
     override_register_product_in_offer_service_returns_201,
     override_register_product_in_offer_service_returns_401,
+    override_register_product_in_offer_service_returns_409,
     override_register_product_in_offer_service_returns_422)
 from app.tests.utils.product import create_random_product
 from fastapi.testclient import TestClient
@@ -46,16 +47,43 @@ def test_product_should_react_to_401_response_from_product_registration_service(
     assert not crud.product.get(db, id="3135dcd5-7add-4a27-b669-4f44b9aa9bee")
 
 
+def test_product_creation_should_fail_if_already_saved_and_registered_409_response_from_product_registration_service(
+    client: TestClient, db: Session, normal_user_token_headers: Dict[str, str]) -> None:
+    app.dependency_overrides[register_product_in_offer_service] = override_register_product_in_offer_service_returns_409
+    create_random_product(db, id="3135dcd5-7add-4a27-b669-4f44b9aa9baa")
+    data = {"id": "3135dcd5-7add-4a27-b669-4f44b9aa9baa", "name": "Bar", "description": "Dancers"}
+    response = client.post(f"{settings.API_V1_STR}/products/", json=data, headers=normal_user_token_headers)
+
+    assert response.status_code == 409
+    content = response.json()
+    assert content["detail"] == "Product already registered"
+    product = crud.product.get(db, id="3135dcd5-7add-4a27-b669-4f44b9aa9baa")
+    assert str(product.id) == "3135dcd5-7add-4a27-b669-4f44b9aa9baa"
+
+
+def test_product_should_be_recreated_after_product_already_registered_409_response_from_product_registration_service(
+    client: TestClient, db: Session, normal_user_token_headers: Dict[str, str]) -> None:
+    app.dependency_overrides[register_product_in_offer_service] = override_register_product_in_offer_service_returns_409
+    data = {"id": "3135dcd5-7add-4a27-b669-4f44b9aa9bee", "name": "Bar", "description": "Dancers"}
+    response = client.post(f"{settings.API_V1_STR}/products/", json=data, headers=normal_user_token_headers)
+
+    assert response.status_code == 201
+    product = crud.product.get(db, id="3135dcd5-7add-4a27-b669-4f44b9aa9bee")
+    assert str(product.id) == "3135dcd5-7add-4a27-b669-4f44b9aa9bee"
+    assert product.name == "Bar"
+    assert product.description == "Dancers"
+
+
 def test_product_should_react_to_422_response_from_product_registration_service(
     client: TestClient, db: Session, normal_user_token_headers: Dict[str, str]) -> None:
     app.dependency_overrides[register_product_in_offer_service] = override_register_product_in_offer_service_returns_422
-    data = {"id": "3135dcd5-7add-4a27-b669-4f44b9aa9bee", "name": "Bar", "description": "Dancers"}
+    data = {"id": "3135dcd5-7add-4a27-b669-4f44b9aa9bbb", "name": "Bar", "description": "Dancers"}
     response = client.post(f"{settings.API_V1_STR}/products/", json=data, headers=normal_user_token_headers)
 
     assert response.status_code == 422
     content = response.json()
     assert content["detail"] == "Unprocessable Entity"
-    assert not crud.product.get(db, id="3135dcd5-7add-4a27-b669-4f44b9aa9bff")
+    assert not crud.product.get(db, id="3135dcd5-7add-4a27-b669-4f44b9aa9bbb")
 
 
 def test_product_should_be_created(

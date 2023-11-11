@@ -32,6 +32,13 @@ def override_register_product_in_offer_service_returns_401(
     return httpx.Response(401, json={"id": "3135dcd5-7add-4a27-b669-4f44b9aa9bee"})
 
 
+def override_register_product_in_offer_service_returns_409(
+        product_in: schemas.ProductCreate,
+        auth_token: str = Depends(auth_token)
+) -> httpx.Response:
+    return httpx.Response(409, json={"id": "3135dcd5-7add-4a27-b669-4f44b9aa9baa"})
+
+
 def override_register_product_in_offer_service_returns_422(
         product_in: schemas.ProductCreate,
         auth_token: str = Depends(auth_token)

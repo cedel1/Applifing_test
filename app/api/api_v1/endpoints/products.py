@@ -78,19 +78,44 @@ def create_product(
     """
     Create a new product.
     """
-    if registered_product_response.status_code != 201:
+    # Some error from external API we cannot recover from
+    if registered_product_response.status_code not in {201, 409}:
         raise HTTPException(status_code=registered_product_response.status_code)
 
-    try:
-        if registered_product_response.json()['id'] == str(product_in.id):
-            product = crud.product.create(db=db, obj_in=product_in)
-            celery_app.send_task("app.celery.worker.download_offers_for_product", args=[str(product_in.id)])
-        else:
-            raise HTTPException(status_code=400, detail="External API returned different product id than expected")
-    except httpx.RequestError as exception:
-        raise HTTPException(status_code=400, detail=str(exception))
-    except httpx.HTTPStatusError as exception:
-        raise HTTPException(status_code=exception.response.status_code, detail=str(exception))
+    # returned and sent ids not matching for HTTP created status (409 does not return id)
+    if (
+        registered_product_response.status_code == 201
+        and registered_product_response.json()['id'] != str(product_in.id)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=f"External API returned different product id than expected. \
+            The returned id was {registered_product_response.json()['id']}"
+        )
+
+    # product is registered in remote service and we also have it locally
+    if registered_product_response.status_code == 409 and crud.product.exists(db, id=product_in.id):
+        raise HTTPException(status_code=registered_product_response.status_code, detail="Product already registered")
+
+    # Now the product is registered in remote service and not registered locally. There are two possible cases why this
+    # might happen:
+    #
+    # - it is either beiing registered for the first time
+    # - it was registered before but deleted localy later on (and it stayed registered and in the remote service
+    #   as that does not have delete/unregister functionality)
+    #
+    #   It is a bit risky to handle the second case like this and relies on the fact that product ids are immutable -
+    #   one id can only mean one and the same product (ie. the same id cannot be repurpose for different products).
+    #   If that was not the case, than when remote service returns 409, the product should not be saved locally.
+    #   On the other hand, that would also mean that once the product was delete locally, it could never be
+    #   re-registered again. That could be solved by not allowing to delete the product locally (only marking it
+    #   as deleted, but keeping it in db) - but that would bring other problems when creating a new product with
+    #   the same id.
+    #   The best solution would probably be to not allow DELETE method on products at all, only deactivating
+    #   them by setting a "is_available" property on them. Then if POST with the same product.id was called,
+    #   it would return 409 - Conflict response.
+    product = crud.product.create(db=db, obj_in=product_in)
+    celery_app.send_task("app.celery.worker.download_offers_for_product", args=[str(product_in.id)])
 
     return product
 
