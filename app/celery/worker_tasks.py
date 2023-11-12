@@ -27,18 +27,19 @@ def do_download_offers_for_product(db: Session, product_id: str) -> str:
             )
             offers_get_response.raise_for_status()
             offers = offers_get_response.json()
-            new_offer_ids = set()
-            for offer in offers:
-                crud.offer.create_or_update(db=db, obj_in={**offer, "product_id": product_id})
-                new_offer_ids.add(offer['id'])
+
+            if offers:
+                offers_values = list(map(lambda offer: {**offer, "product_id": product_id}, offers))
+                crud.offer.bulk_create_or_update(db=db, objects=offers_values)
+
             # This is based on assumption specified in the excersise description:
             # "Once an offer sells out, it disappears and is replaced by another offer."
             # delete removed offers - this could also be done in any other way,
             # for example by setting 'is_available' flag or some other method
             offer_ids_to_delete = [
                 str(offer.id) for offer
-                in crud.offer.get_multi_by_product(db, product_id = product_id)
-                if str(offer.id) not in new_offer_ids
+                in crud.offer.get_multi_by_product(db, product_id=product_id)
+                if str(offer.id) not in set(offer["id"] for offer in offers)
             ]
             crud.offer.remove_multiple_by_id(db, ids=offer_ids_to_delete)
             return f"Created or updated {len(offers)} offers, deleted {len(offer_ids_to_delete)} offers."
@@ -56,4 +57,3 @@ def do_download_product_offers(db: Session) -> str:
         for product in product_only_ids_result:
             celery_app.send_task("app.celery.worker.download_offers_for_product", args=[str(product.id)])
     return f"Send tasks to update offers for {number_of_products} product(s)."
-

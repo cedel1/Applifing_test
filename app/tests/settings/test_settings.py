@@ -37,7 +37,6 @@ MANDATORY = {
 def test_mandatory_and_defaults() -> None:
     settings = make_settings(MANDATORY)
     for key, value in MANDATORY.items():
-        print(f"{key} : {value}")
         assert str(getattr(settings, key)) == str(value)
     assert settings.EMAIL_TEMPLATES_DIR == "/app/app/email-templates/build"
     assert settings.EMAILS_ENABLED is False

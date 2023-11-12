@@ -71,15 +71,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def exists(self, db: Session, *, id: Any) -> bool:
         return bool(self.get(db=db, id=id))
 
-    def create_or_update(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
-        obj_in_data = jsonable_encoder(obj_in)
-        db_obj = self.get(db=db, id=obj_in_data.get("id", None))
-        db_obj = (
-            self.update(db, db_obj=db_obj, obj_in=obj_in)
-            if db_obj
-            else self.create(db, obj_in=obj_in))
-        return db_obj
-
     def remove(self, db: Session, *, id: int) -> ModelType:
         obj = db.get(self.model, id) # changed to reflect pending deprecation on SQLAlchemy side
         db.delete(obj)

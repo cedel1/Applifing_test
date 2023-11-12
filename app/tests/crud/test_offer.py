@@ -1,10 +1,9 @@
-from sqlalchemy.orm import Session
-
 from app import crud
 from app.schemas.offer import OfferCreate, OfferUpdate
-from app.tests.utils.offer import create_random_offer_with_product, create_random_offer
+from app.tests.utils.offer import create_random_offer, create_random_offer_with_product
 from app.tests.utils.product import create_random_product
 from app.tests.utils.utils import random_int, random_uuid
+from sqlalchemy.orm import Session
 
 
 def test_create_offer_should_create_offer(db: Session) -> None:
@@ -40,41 +39,47 @@ def test_update_offer_should_update_offer(db: Session) -> None:
     assert offer2.product_id == offer.product_id
 
 
-def test_create_or_update_offer_should_create_offer(db: Session) -> None:
+def test_bulk_create_or_update_offer_should_create_offer(db: Session) -> None:
     product = create_random_product(db)
     current_offer_count = crud.offer.count(db)
     offer_update = OfferCreate(
         id=random_uuid(),
         price=random_int(),
         items_in_stock=random_int(),
-        product_id=product.id)
-    offer2 = crud.offer.create_or_update(db=db, obj_in=offer_update)
-    assert offer_update.id == offer2.id
-    assert offer_update.price == offer2.price
-    assert offer_update.items_in_stock == offer2.items_in_stock
-    assert offer_update.product_id == offer2.product_id
+        product_id=product.id).model_dump()
+
+    crud.offer.bulk_create_or_update(db=db, objects=[offer_update,])
+
+    created_offer = crud.offer.get(db=db, id=offer_update["id"])
+    assert offer_update["id"] == created_offer.id
+    assert offer_update["price"] == created_offer.price
+    assert offer_update["items_in_stock"] == created_offer.items_in_stock
+    assert offer_update["product_id"] == created_offer.product_id
     assert current_offer_count + 1 == crud.offer.count(db)
 
 
-def test_create_or_update_offer_should_update_offer(db: Session) -> None:
+def test_bulk_create_or_update_offer_should_update_offer(db: Session) -> None:
     offer = create_random_offer_with_product(db=db)
     offer_update_price = offer.price + 1
     offer_update_items_in_stock = offer.items_in_stock + 1
     current_offer_count = crud.offer.count(db)
-    offer_update = OfferCreate(
+    offer_update_dict = OfferCreate(
         id=offer.id,
         price=offer_update_price,
         items_in_stock=offer_update_items_in_stock,
-        product_id=offer.product.id)
-    offer2 = crud.offer.create_or_update(db=db, obj_in=offer_update)
-    assert offer_update.id == offer2.id
-    assert offer2.id == offer.id
-    assert offer_update.price == offer2.price
-    assert offer2.price == offer_update_price
-    assert offer_update.items_in_stock == offer2.items_in_stock
-    assert offer2.items_in_stock == offer_update_items_in_stock
-    assert offer_update.product_id == offer2.product_id
-    assert offer2.product_id == offer.product.id
+        product_id=offer.product.id).model_dump()
+
+    crud.offer.bulk_create_or_update(db=db, objects=[offer_update_dict,])
+
+    updated_offer = crud.offer.get(db=db, id=offer.id)
+    assert offer_update_dict["id"] == updated_offer.id
+    assert updated_offer.id == offer.id
+    assert offer_update_dict["price"] == updated_offer.price
+    assert updated_offer.price == offer_update_price
+    assert offer_update_dict["items_in_stock"] == updated_offer.items_in_stock
+    assert updated_offer.items_in_stock == offer_update_items_in_stock
+    assert offer_update_dict["product_id"] == updated_offer.product_id
+    assert updated_offer.product_id == offer.product.id
     assert current_offer_count == crud.offer.count(db)
 
 
@@ -82,7 +87,7 @@ def test_get_multi_by_product_should_return_list_of_offers_filtered_by_product(d
     product = create_random_product(db=db)
     create_random_offer(db=db, product_id=product.id)
     create_random_offer(db=db, product_id=product.id)
-    random_other_offer = create_random_offer_with_product(db=db)
+    create_random_offer_with_product(db=db)  # random other offer
     offers = crud.offer.get_multi_by_product(db=db, product_id=product.id)
     assert len(offers) == 2
     for offer in offers:

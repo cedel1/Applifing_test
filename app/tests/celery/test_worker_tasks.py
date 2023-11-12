@@ -46,6 +46,17 @@ def test_do_download_offers_for_product_should_succeed(db: Session, monkeypatch)
     assert saved_offer.items_in_stock == 10
 
 
+def test_do_download_offers_for_product_should_delete_offer_if_not_present_in_result(db: Session, monkeypatch):
+    monkeypatch.setattr(Client, "get", get_mocked_client_get)
+
+    create_random_product(db, id="6ba7b810-9dad-11d1-80b4-00c04fd430c9")
+    create_random_offer(db, product_id="6ba7b810-9dad-11d1-80b4-00c04fd430c9")  # not in feed, will delete
+
+    result = do_download_offers_for_product(db, product_id="6ba7b810-9dad-11d1-80b4-00c04fd430c9")
+    assert result == "Created or updated 1 offers, deleted 1 offers."
+    assert not crud.offer.get_multi_by_product(db, product_id="6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+
+
 def test_do_download_product_offers(db: Session, clear_db_products: None, monkeypatch):
     monkeypatch.setattr(celery_app, "send_task", get_mocked_celery)
 
