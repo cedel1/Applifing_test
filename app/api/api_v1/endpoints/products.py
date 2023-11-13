@@ -11,8 +11,7 @@ from app.core.config import settings
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
-from tenacity import (after_log, before_log, retry, retry_if_result,
-                      stop_after_attempt, wait_fixed, wait_random)
+from tenacity import after_log, before_log, retry, retry_if_result, stop_after_attempt, wait_fixed
 
 router = APIRouter()
 
@@ -58,8 +57,8 @@ def register_product_in_offer_service(
         with httpx.Client() as client:
             headers = {"Bearer": auth_token}
             product_register_response = client.post(f"{settings.OFFER_SERVICE_BASE_URL}api/v1/products/register",
-                                                   headers=headers,
-                                                   json=jsonable_encoder(product_in))
+                                                    headers=headers,
+                                                    json=jsonable_encoder(product_in))
             return product_register_response
     except httpx.RequestError as exception:
         raise HTTPException(status_code=400, detail=str(exception))

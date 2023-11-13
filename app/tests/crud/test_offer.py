@@ -48,7 +48,7 @@ def test_bulk_create_or_update_offer_should_create_offer(db: Session) -> None:
         items_in_stock=random_int(),
         product_id=product.id).model_dump()
 
-    crud.offer.bulk_create_or_update(db=db, objects=[offer_update,])
+    crud.offer.bulk_create_or_update(db=db, objects=[offer_update, ])
 
     created_offer = crud.offer.get(db=db, id=offer_update["id"])
     assert offer_update["id"] == created_offer.id
@@ -69,7 +69,7 @@ def test_bulk_create_or_update_offer_should_update_offer(db: Session) -> None:
         items_in_stock=offer_update_items_in_stock,
         product_id=offer.product.id).model_dump()
 
-    crud.offer.bulk_create_or_update(db=db, objects=[offer_update_dict,])
+    crud.offer.bulk_create_or_update(db=db, objects=[offer_update_dict, ])
 
     updated_offer = crud.offer.get(db=db, id=offer.id)
     assert offer_update_dict["id"] == updated_offer.id
@@ -101,7 +101,7 @@ def test_remove_multiple_by_id_should_remove_multiple_offers(db: Session) -> Non
     offer_4_id = create_random_offer_with_product(db).id
     offer_ids_to_remove = [offer_1_id, offer_2_id]
     crud.offer.remove_multiple_by_id(db=db, ids=offer_ids_to_remove)
-    assert None == crud.offer.get(db=db, id=offer_1_id)
-    assert None == crud.offer.get(db=db, id=offer_2_id)
+    assert crud.offer.get(db=db, id=offer_1_id) is None
+    assert crud.offer.get(db=db, id=offer_2_id) is None
     assert offer_3_id == crud.offer.get(db=db, id=offer_3_id).id
     assert offer_4_id == crud.offer.get(db=db, id=offer_4_id).id

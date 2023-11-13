@@ -32,7 +32,7 @@ class OfferServiceAuthorization:
                     token_string,
                     ex=settings.OFFER_SERVICE_REFRESH_TOKEN_EXPIRE_SECONDS)
                 return token_string
-        except KeyError as exception:
+        except KeyError:
             raise HTTPException(status_code=400, detail="access token field not received in response")
         except httpx.RequestError as exception:
             raise HTTPException(status_code=400, detail=str(exception))

@@ -1,6 +1,5 @@
 from typing import Dict, Generator
 
-import httpx
 import pytest
 from app.api.deps import get_db
 from app.api.offer_api_auth import auth_token
